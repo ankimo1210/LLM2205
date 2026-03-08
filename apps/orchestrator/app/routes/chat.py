@@ -56,7 +56,7 @@ async def chat(request: ChatRequest, db: Session = Depends(get_db)):
         .order_by(Message.created_at)
         .all()
     )
-    messages: list[dict] = [{"role": "system", "content": settings.system_prompt}]
+    messages: list[dict] = [{"role": "system", "content": settings.get_system_prompt()}]
     for msg in history:
         messages.append({"role": msg.role, "content": msg.content})
     messages.append({"role": "user", "content": request.message})

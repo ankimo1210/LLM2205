@@ -126,9 +126,22 @@ bash scripts/test_chat.sh
 |------|-----------|------|
 | `VLLM_BASE_URL` | `http://vllm:8001` | LLM API エンドポイント（`/v1` 不要） |
 | `VLLM_MODEL_ID` | `Qwen/Qwen2.5-7B-Instruct` | モデル ID |
-| `SYSTEM_PROMPT` | `You are a helpful assistant...` | システムプロンプト |
+| `SYSTEM_PROMPT` | `You are a helpful assistant...` | システムプロンプト（フォールバック） |
+| `SYSTEM_PROMPT_FILE` | *(empty)* | システムプロンプトファイルパス（指定時優先） |
 | `DATABASE_URL` | `sqlite:////data/chat.db` | SQLite パス (コンテナ内) |
 | `HF_TOKEN` | *(空)* | gated モデル用 HuggingFace トークン |
+
+### システムプロンプトのカスタマイズ
+
+全モデル共通のシステムプロンプトは `prompts/system_prompt.md` で管理できます。
+Markdown 形式で複数行の指示を書けます。
+
+```bash
+# 編集するだけで次のリクエストから反映されます（コンテナ再起動不要）
+$EDITOR prompts/system_prompt.md
+```
+
+優先順位: `SYSTEM_PROMPT_FILE` のファイルが存在する場合 → その内容を使用。ファイルがない場合 → `.env` の `SYSTEM_PROMPT` にフォールバック。
 
 ---
 

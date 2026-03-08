@@ -52,6 +52,7 @@ services:
     env_file: .env
     volumes:
       - sqlite_data:/data
+      - ./prompts:/prompts:ro
     depends_on:
       vllm:
         condition: service_healthy
