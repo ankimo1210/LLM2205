@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Local LLM Chat</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- Sidebar -->
+    <aside id="sidebar">
+      <div id="sidebar-header">
+        <span class="sidebar-title">Chats</span>
+        <button id="new-chat-btn" title="新しい会話">＋ New</button>
+      </div>
+      <div id="conv-list"></div>
+    </aside>
+
+    <!-- Main chat area -->
+    <main id="chat-area">
+      <div id="messages" role="log" aria-live="polite"></div>
+
+      <div id="input-area">
+        <textarea
+          id="msg-input"
+          placeholder="メッセージを入力… (Shift+Enter で改行)"
+          rows="3"
+          aria-label="メッセージ"
+        ></textarea>
+        <button id="send-btn" aria-label="送信">送信</button>
+      </div>
+    </main>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+services:
+  # ── vLLM (GPU required) ──────────────────────────────────────────────────
+  # Start with: docker compose --profile with-vllm up
+  # Without GPU, set VLLM_BASE_URL in .env to point to an external LLM API
+  # (LM Studio, llama.cpp server, Ollama's OpenAI-compat endpoint, etc.)
+  vllm:
+    image: vllm/vllm-openai:latest
+    profiles: ["with-vllm"]
+    command:
+      - "--model"
+      - "${VLLM_MODEL_ID:-Qwen/Qwen2.5-7B-Instruct}"
+      - "--host"
+      - "0.0.0.0"
+      - "--port"
+      - "8001"
+      - "--dtype"
+      - "float16"
+      - "--max-model-len"
+      - "8192"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    environment:
+      - HUGGING_FACE_HUB_TOKEN=${HF_TOKEN:-}
+    volumes:
+      - hf_cache:/root/.cache/huggingface
+    ports:
+      - "8001:8001"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8001/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 15
+      start_period: 180s
+
+  # ── Orchestrator ─────────────────────────────────────────────────────────
+  orchestrator:
+    build:
+      context: ./apps/orchestrator
+    ports:
+      - "8000:8000"
+    env_file: .env
+    volumes:
+      - sqlite_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  hf_cache:
+  sqlite_data:

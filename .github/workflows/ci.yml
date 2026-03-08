@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: apps/orchestrator/pyproject.toml
+
+      - name: Install package + dev deps
+        run: pip install -e "apps/orchestrator[dev]"
+
+      - name: Run tests
+        working-directory: apps/orchestrator
+        run: pytest tests/ -v --tb=short
+
+      - name: Lint (ruff, optional)
+        if: false   # enable when ruff is added to dev deps
+        run: ruff check apps/orchestrator/app/
