@@ -196,6 +196,47 @@ function hideEmptyState() {
   if (empty) empty.remove();
 }
 
+// ── Markdown / math rendering ─────────────────────────────────────────────
+function renderMarkdown(text) {
+  // Convert \( ... \) and \[ ... \] to KaTeX-safe placeholders,
+  // then run marked, sanitize, and render math.
+  const mathBlocks = [];
+  const placeholder = (i) => `%%MATH_${i}%%`;
+
+  // Collect block math \[ ... \] (must come before inline)
+  let processed = text.replace(/\\\[([\s\S]*?)\\\]/g, (_, expr) => {
+    const i = mathBlocks.length;
+    mathBlocks.push({ expr: expr.trim(), display: true });
+    return placeholder(i);
+  });
+  // Collect inline math \( ... \)
+  processed = processed.replace(/\\\(([\s\S]*?)\\\)/g, (_, expr) => {
+    const i = mathBlocks.length;
+    mathBlocks.push({ expr: expr.trim(), display: false });
+    return placeholder(i);
+  });
+
+  // marked → DOMPurify
+  const rawHtml = marked.parse(processed, { breaks: true, gfm: true });
+  let clean = DOMPurify.sanitize(rawHtml, {
+    ADD_TAGS: ['span'],
+    ADD_ATTR: ['class', 'style', 'aria-hidden'],
+  });
+
+  // Re-inject KaTeX rendered math
+  for (let i = 0; i < mathBlocks.length; i++) {
+    const { expr, display } = mathBlocks[i];
+    let rendered;
+    try {
+      rendered = katex.renderToString(expr, { displayMode: display, throwOnError: false });
+    } catch {
+      rendered = display ? `\\[${expr}\\]` : `\\(${expr}\\)`;
+    }
+    clean = clean.replace(placeholder(i), rendered);
+  }
+  return clean;
+}
+
 // ── Message rendering ─────────────────────────────────────────────────────
 function appendMessage(role, content) {
   hideEmptyState();
@@ -212,7 +253,13 @@ function appendMessage(role, content) {
 
   const bubble = document.createElement('div');
   bubble.className = 'bubble';
-  bubble.textContent = content;
+
+  if (role === 'assistant' && content) {
+    bubble.classList.add('markdown-body');
+    bubble.innerHTML = renderMarkdown(content);
+  } else {
+    bubble.textContent = content;
+  }
 
   inner.appendChild(badge);
   inner.appendChild(bubble);
@@ -255,6 +302,7 @@ async function sendMessage() {
   input.style.height = 'auto';
   setStreaming(true);
 
+  let streamedText = '';
   appendMessage('user', message);
   const assistantBubble = appendMessage('assistant', '');
   assistantBubble.classList.add('streaming');
@@ -302,12 +350,16 @@ async function sendMessage() {
         if (data.type === 'start') {
           currentConversationId = data.conversation_id;
         } else if (data.type === 'token') {
-          assistantBubble.textContent += data.content;
+          streamedText += data.content;
+          assistantBubble.textContent = streamedText;
           scrollToBottom();
         } else if (data.type === 'error') {
           assistantBubble.textContent = `エラー: ${data.message}`;
           assistantBubble.classList.add('error');
         } else if (data.type === 'done') {
+          // Final render: markdown + math
+          assistantBubble.classList.add('markdown-body');
+          assistantBubble.innerHTML = renderMarkdown(streamedText);
           await loadConversations();
         }
       }

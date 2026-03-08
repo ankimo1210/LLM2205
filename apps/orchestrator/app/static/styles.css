@@ -195,6 +195,113 @@ html, body { height: 100%; font-family: var(--font); background: var(--chat-bg);
 }
 @keyframes blink { 50% { opacity: 0; } }
 
+/* ── Markdown rendered content ───────────────────────────────────────── */
+.bubble.markdown-body { white-space: normal; }
+.bubble.markdown-body h1,
+.bubble.markdown-body h2,
+.bubble.markdown-body h3 {
+  margin: 0.8em 0 0.4em;
+  line-height: 1.3;
+  color: var(--text);
+}
+.bubble.markdown-body h1 { font-size: 1.3rem; }
+.bubble.markdown-body h2 { font-size: 1.15rem; }
+.bubble.markdown-body h3 { font-size: 1.0rem; }
+.bubble.markdown-body h1:first-child,
+.bubble.markdown-body h2:first-child,
+.bubble.markdown-body h3:first-child { margin-top: 0; }
+
+.bubble.markdown-body p { margin: 0.5em 0; }
+.bubble.markdown-body p:first-child { margin-top: 0; }
+.bubble.markdown-body p:last-child  { margin-bottom: 0; }
+
+.bubble.markdown-body ul,
+.bubble.markdown-body ol {
+  margin: 0.5em 0;
+  padding-left: 1.6em;
+}
+.bubble.markdown-body li { margin: 0.2em 0; }
+.bubble.markdown-body li > ul,
+.bubble.markdown-body li > ol { margin: 0.1em 0; }
+
+.bubble.markdown-body strong { color: #f5c2e7; }
+.bubble.markdown-body em { color: var(--text-dim); }
+
+.bubble.markdown-body blockquote {
+  border-left: 3px solid var(--accent);
+  margin: 0.5em 0;
+  padding: 0.3em 0.8em;
+  color: var(--text-dim);
+  background: rgba(137,180,250,0.05);
+  border-radius: 0 6px 6px 0;
+}
+
+.bubble.markdown-body hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 0.8em 0;
+}
+
+/* Inline code */
+.bubble.markdown-body code {
+  font-family: var(--font-mono);
+  font-size: 0.84em;
+  background: rgba(137,180,250,0.1);
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+  color: #f5c2e7;
+}
+
+/* Code blocks */
+.bubble.markdown-body pre {
+  background: #11111b;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin: 0.6em 0;
+  overflow-x: auto;
+  max-width: 100%;
+}
+.bubble.markdown-body pre code {
+  background: transparent;
+  padding: 0;
+  color: var(--text);
+  font-size: 0.82em;
+  line-height: 1.5;
+}
+
+/* Tables */
+.bubble.markdown-body table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.6em 0;
+  font-size: 0.84em;
+  display: block;
+  overflow-x: auto;
+  max-width: 100%;
+}
+.bubble.markdown-body th,
+.bubble.markdown-body td {
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+  text-align: left;
+}
+.bubble.markdown-body th {
+  background: rgba(137,180,250,0.1);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.bubble.markdown-body tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+
+/* KaTeX math blocks */
+.bubble.markdown-body .katex-display {
+  margin: 0.8em 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 4px 0;
+}
+.bubble.markdown-body .katex { font-size: 1.05em; }
+
 /* Error */
 .bubble.error {
   color: var(--error);
