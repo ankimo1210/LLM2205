@@ -1,0 +1,25 @@
+# Caddyfile — reverse proxy for Local LLM Chat
+#
+# Usage:
+#   docker compose --profile with-caddy up -d
+#
+# Default: HTTP on port 80, no TLS.
+# For HTTPS with a real domain, change ":80" to your domain (e.g. "chat.example.com").
+# Caddy will automatically provision a Let's Encrypt certificate.
+#
+# Basic Auth (optional):
+#   Uncomment the basicauth block below and set your own credentials.
+#   Generate a hashed password:
+#     docker run --rm caddy:2-alpine caddy hash-password --plaintext 'YOUR_PASSWORD'
+
+:80 {
+	# --- Optional Basic Auth ---
+	# basicauth /* {
+	# 	admin $2a$14$REPLACE_WITH_HASHED_PASSWORD
+	# }
+
+	reverse_proxy orchestrator:8000 {
+		# SSE: disable response buffering
+		flush_interval -1
+	}
+}

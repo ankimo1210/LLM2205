@@ -200,7 +200,8 @@ FastAPI Orchestrator (:8000)
 
 ```
 local-chatgpt/
-├── docker-compose.yml        # orchestrator + vLLM (profile)
+├── docker-compose.yml        # orchestrator + vLLM (profile) + Caddy (profile)
+├── Caddyfile                 # reverse proxy 設定 (optional)
 ├── .env.example              # 環境変数テンプレート
 ├── .github/workflows/ci.yml  # GitHub Actions (ruff + pytest)
 ├── scripts/
@@ -250,6 +251,113 @@ VLLM_BASE_URL=http://localhost:11434 \
 VLLM_MODEL_ID=llama3 \
 uvicorn app.main:app --reload
 ```
+
+---
+
+## LAN 内の他端末からアクセスする
+
+Uvicorn は `0.0.0.0` で listen しており、Docker Desktop はホストの全インターフェースにポートを公開するため、
+**追加設定なしで** 同一 LAN 内の他デバイス（スマホ・別 PC）からアクセスできます。
+
+### 1. Windows ホストの IP を確認する
+
+PowerShell で:
+
+```powershell
+# Wi-Fi の場合
+(Get-NetIPAddress -InterfaceAlias "Wi-Fi" -AddressFamily IPv4).IPAddress
+
+# 有線 LAN の場合
+(Get-NetIPAddress -InterfaceAlias "Ethernet" -AddressFamily IPv4).IPAddress
+
+# よく分からない場合（全アダプタ一覧）
+Get-NetIPAddress -AddressFamily IPv4 | Select-Object InterfaceAlias, IPAddress
+```
+
+たとえば `192.168.1.100` が返ったら、別端末のブラウザで:
+
+```
+http://192.168.1.100:8000
+```
+
+### 2. Windows Firewall の注意
+
+Docker Desktop on WSL2 は通常、自動でファイアウォール規則を追加します。
+もしアクセスできない場合は、ポート 8000 を手動で許可してください:
+
+```powershell
+# 管理者権限の PowerShell で実行
+New-NetFirewallRule -DisplayName "LocalLLMChat" -Direction Inbound -LocalPort 8000 -Protocol TCP -Action Allow
+```
+
+不要になったら削除:
+
+```powershell
+Remove-NetFirewallRule -DisplayName "LocalLLMChat"
+```
+
+---
+
+## 外部公開（インターネット経由）
+
+> **⚠️ 重要:** このアプリにはユーザー認証がありません。
+> インターネットに直接公開すると、**誰でも LLM を呼び出せてしまいます**。
+> 必ず以下のいずれかの対策を取ってください。
+
+### 推奨: 安全な外部アクセス方法
+
+| 方法 | 難易度 | 特徴 |
+|------|--------|------|
+| **Tailscale** | ★☆☆ | VPN 越しにプライベートアクセス。設定が最も簡単。ポート開放不要 |
+| **Cloudflare Tunnel** | ★★☆ | 無料で HTTPS + ドメイン。Cloudflare Zero Trust で認証も追加可能 |
+| **Caddy + Basic Auth** | ★★☆ | このリポジトリに同梱。下記参照 |
+
+### Caddy リバースプロキシ（同梱・optional）
+
+HTTPS 化・Basic Auth・SSE 互換の reverse proxy として Caddy を同梱しています。
+
+#### 起動方法
+
+```bash
+docker compose --profile with-caddy up -d
+```
+
+`http://<host-ip>` (ポート 80) でアクセスできます。
+
+#### Basic Auth を有効にする
+
+1. ハッシュ化パスワードを生成:
+
+```bash
+docker run --rm caddy:2-alpine caddy hash-password --plaintext 'YOUR_PASSWORD'
+```
+
+2. [Caddyfile](Caddyfile) の `basicauth` ブロックのコメントを外し、ハッシュを貼り付ける:
+
+```
+basicauth /* {
+    admin $2a$14$xxxxxxxxxxxxxxxxxxxx
+}
+```
+
+3. 再起動:
+
+```bash
+docker compose --profile with-caddy restart caddy
+```
+
+#### HTTPS（独自ドメイン）
+
+[Caddyfile](Caddyfile) の `:80` をドメイン名に変更するだけで、Caddy が自動で Let's Encrypt 証明書を取得します:
+
+```
+chat.example.com {
+    ...
+}
+```
+
+> **SSE の注意:** Caddy 設定には `flush_interval -1` を入れてあり、SSE ストリーミングがバッファリングされずにそのまま動作します。
+> nginx など他のプロキシを使う場合は、`proxy_buffering off` / `X-Accel-Buffering: no` の設定が必要です。
 
 ---
 
