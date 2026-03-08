@@ -8,6 +8,14 @@ from app.config import settings
 _TIMEOUT = httpx.Timeout(connect=10.0, read=120.0, write=10.0, pool=5.0)
 
 
+def _completions_url() -> str:
+    """Build the chat completions URL, normalising a trailing /v1."""
+    base = settings.vllm_base_url.rstrip("/")
+    if base.endswith("/v1"):
+        base = base[:-3]
+    return f"{base}/v1/chat/completions"
+
+
 async def stream_chat(messages: list[dict]) -> AsyncIterator[str]:
     """Yield text tokens from the vLLM OpenAI-compatible streaming API."""
     payload = {
@@ -16,7 +24,7 @@ async def stream_chat(messages: list[dict]) -> AsyncIterator[str]:
         "stream": True,
         "max_tokens": 2048,
     }
-    url = f"{settings.vllm_base_url}/v1/chat/completions"
+    url = _completions_url()
 
     try:
         async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
@@ -25,8 +33,8 @@ async def stream_chat(messages: list[dict]) -> AsyncIterator[str]:
                     response.raise_for_status()
                 except httpx.HTTPStatusError as exc:
                     raise RuntimeError(
-                        f"LLM API returned {exc.response.status_code} — "
-                        f"check VLLM_MODEL_ID or API key"
+                        f"LLM API returned {exc.response.status_code} "
+                        f"at {url} — check VLLM_MODEL_ID or API key"
                     ) from exc
 
                 async for line in response.aiter_lines():
@@ -44,10 +52,10 @@ async def stream_chat(messages: list[dict]) -> AsyncIterator[str]:
                         yield delta
     except httpx.ConnectError as exc:
         raise RuntimeError(
-            f"Cannot reach LLM endpoint at {settings.vllm_base_url} — "
+            f"Cannot reach LLM endpoint at {url} — "
             f"is the service running?"
         ) from exc
     except httpx.TimeoutException as exc:
         raise RuntimeError(
-            f"LLM endpoint timed out ({settings.vllm_base_url})"
+            f"LLM endpoint timed out ({url})"
         ) from exc

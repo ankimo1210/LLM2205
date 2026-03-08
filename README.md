@@ -41,17 +41,19 @@ cp .env.example .env
 
 ```dotenv
 # Ollama の場合
-VLLM_BASE_URL=http://host.docker.internal:11434/v1
+VLLM_BASE_URL=http://host.docker.internal:11434
 VLLM_MODEL_ID=llama3
 
 # LM Studio の場合
-VLLM_BASE_URL=http://host.docker.internal:1234/v1
+VLLM_BASE_URL=http://host.docker.internal:1234
 VLLM_MODEL_ID=local-model
 
 # OpenAI の場合
 VLLM_BASE_URL=https://api.openai.com
 VLLM_MODEL_ID=gpt-4o
 ```
+
+> **Note:** `/v1` は不要です。コードが自動で `/v1/chat/completions` を付与します。
 
 ```bash
 docker compose up --build -d
@@ -121,7 +123,7 @@ bash scripts/test_chat.sh
 
 | 変数 | デフォルト | 説明 |
 |------|-----------|------|
-| `VLLM_BASE_URL` | `http://vllm:8001` | LLM API エンドポイント |
+| `VLLM_BASE_URL` | `http://vllm:8001` | LLM API エンドポイント（`/v1` 不要） |
 | `VLLM_MODEL_ID` | `Qwen/Qwen2.5-7B-Instruct` | モデル ID |
 | `SYSTEM_PROMPT` | `You are a helpful assistant...` | システムプロンプト |
 | `DATABASE_URL` | `sqlite:////data/chat.db` | SQLite パス (コンテナ内) |
@@ -239,7 +241,7 @@ ruff check app/ tests/
 
 # ローカル起動（外部 LLM が動いている場合）
 DATABASE_URL=sqlite:///./dev.db \
-VLLM_BASE_URL=http://localhost:11434/v1 \
+VLLM_BASE_URL=http://localhost:11434 \
 VLLM_MODEL_ID=llama3 \
 uvicorn app.main:app --reload
 ```
