@@ -11,24 +11,31 @@
     <!-- Sidebar -->
     <aside id="sidebar">
       <div id="sidebar-header">
-        <span class="sidebar-title">Chats</span>
-        <button id="new-chat-btn" title="新しい会話">＋ New</button>
+        <button id="new-chat-btn" title="新しい会話">＋ New Chat</button>
       </div>
       <div id="conv-list"></div>
     </aside>
 
     <!-- Main chat area -->
     <main id="chat-area">
-      <div id="messages" role="log" aria-live="polite"></div>
+      <div id="messages" role="log" aria-live="polite">
+        <div id="empty-state">
+          <div class="empty-icon">💬</div>
+          <p>メッセージを送信して会話を始めましょう</p>
+        </div>
+      </div>
 
       <div id="input-area">
         <textarea
           id="msg-input"
           placeholder="メッセージを入力… (Shift+Enter で改行)"
-          rows="3"
+          rows="1"
           aria-label="メッセージ"
         ></textarea>
-        <button id="send-btn" aria-label="送信">送信</button>
+        <button id="send-btn" aria-label="送信">
+          <span id="send-label">送信</span>
+          <span id="send-spinner" class="spinner" hidden></span>
+        </button>
       </div>
     </main>
   </div>

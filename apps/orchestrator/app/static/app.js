@@ -3,6 +3,9 @@
 let currentConversationId = null;
 let isStreaming = false;
 
+// ── DOM refs ──────────────────────────────────────────────────────────────
+const $ = (id) => document.getElementById(id);
+
 // ── Init ──────────────────────────────────────────────────────────────────
 async function init() {
   setupEventListeners();
@@ -10,9 +13,9 @@ async function init() {
 }
 
 function setupEventListeners() {
-  const input = document.getElementById('msg-input');
+  const input = $('msg-input');
 
-  document.getElementById('send-btn').addEventListener('click', sendMessage);
+  $('send-btn').addEventListener('click', sendMessage);
 
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -21,13 +24,15 @@ function setupEventListeners() {
     }
   });
 
-  // Auto-resize textarea as user types
-  input.addEventListener('input', () => {
-    input.style.height = 'auto';
-    input.style.height = Math.min(input.scrollHeight, 160) + 'px';
-  });
+  input.addEventListener('input', autoResize);
 
-  document.getElementById('new-chat-btn').addEventListener('click', startNewChat);
+  $('new-chat-btn').addEventListener('click', startNewChat);
+}
+
+function autoResize() {
+  const input = $('msg-input');
+  input.style.height = 'auto';
+  input.style.height = Math.min(input.scrollHeight, 160) + 'px';
 }
 
 // ── Sidebar ───────────────────────────────────────────────────────────────
@@ -36,31 +41,57 @@ async function loadConversations() {
     const resp = await fetch('/conversations');
     if (!resp.ok) return;
     const convs = await resp.json();
-    renderConversations(convs);
+
+    // Fetch first user message for each conversation (in parallel, max 20)
+    const details = await Promise.all(
+      convs.slice(0, 30).map(async (conv) => {
+        try {
+          const r = await fetch(`/conversations/${conv.id}`);
+          if (!r.ok) return { ...conv, preview: '' };
+          const d = await r.json();
+          const first = d.messages.find((m) => m.role === 'user');
+          return { ...conv, preview: first ? first.content : '' };
+        } catch {
+          return { ...conv, preview: '' };
+        }
+      })
+    );
+
+    renderConversations(details);
   } catch (e) {
     console.warn('Failed to load conversations:', e);
   }
 }
 
 function renderConversations(convs) {
-  const list = document.getElementById('conv-list');
+  const list = $('conv-list');
   list.innerHTML = '';
   for (const conv of convs) {
     const el = document.createElement('div');
     el.className = 'conv-item' + (conv.id === currentConversationId ? ' active' : '');
-    el.textContent = formatConvLabel(conv);
     el.dataset.id = conv.id;
+
+    const preview = document.createElement('span');
+    preview.className = 'conv-preview';
+    preview.textContent = conv.preview
+      ? conv.preview.slice(0, 40) + (conv.preview.length > 40 ? '…' : '')
+      : '#' + conv.id.slice(0, 8);
+
+    const time = document.createElement('span');
+    time.className = 'conv-time';
+    time.textContent = formatTime(conv.created_at);
+
+    el.appendChild(preview);
+    el.appendChild(time);
     el.addEventListener('click', () => loadConversation(conv.id));
     list.appendChild(el);
   }
 }
 
-function formatConvLabel(conv) {
-  const d = new Date(conv.created_at);
-  // created_at is ISO-8601 with UTC timezone from the API
+function formatTime(iso) {
+  const d = new Date(iso);
   return d.toLocaleDateString('ja-JP', { month: '2-digit', day: '2-digit' })
-    + ' ' + d.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
-    + ' #' + conv.id.slice(0, 6);
+    + ' ' + d.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
 }
 
 // ── Load conversation history ─────────────────────────────────────────────
@@ -73,8 +104,7 @@ async function loadConversation(id) {
     if (!resp.ok) return;
     const conv = await resp.json();
 
-    const messagesEl = document.getElementById('messages');
-    messagesEl.innerHTML = '';
+    clearMessages();
     for (const msg of conv.messages) {
       appendMessage(msg.role, msg.content);
     }
@@ -93,40 +123,82 @@ function highlightActiveConv(id) {
 // ── New chat ──────────────────────────────────────────────────────────────
 function startNewChat() {
   currentConversationId = null;
-  document.getElementById('messages').innerHTML = '';
+  clearMessages();
   document.querySelectorAll('.conv-item').forEach((el) => el.classList.remove('active'));
-  document.getElementById('msg-input').focus();
+  $('msg-input').focus();
+}
+
+function clearMessages() {
+  const el = $('messages');
+  el.innerHTML = '';
+  // Restore empty state
+  const empty = document.createElement('div');
+  empty.id = 'empty-state';
+  empty.innerHTML = '<div class="empty-icon">💬</div><p>メッセージを送信して会話を始めましょう</p>';
+  el.appendChild(empty);
+}
+
+function hideEmptyState() {
+  const empty = $('empty-state');
+  if (empty) empty.remove();
 }
 
 // ── Message rendering ─────────────────────────────────────────────────────
 function appendMessage(role, content) {
-  const wrapper = document.createElement('div');
-  wrapper.className = `message ${role}`;
+  hideEmptyState();
+
+  const row = document.createElement('div');
+  row.className = `message-row ${role}`;
+
+  const inner = document.createElement('div');
+  inner.className = 'message-inner';
+
+  const badge = document.createElement('div');
+  badge.className = 'role-badge';
+  badge.textContent = role === 'user' ? 'You' : 'AI';
 
   const bubble = document.createElement('div');
   bubble.className = 'bubble';
   bubble.textContent = content;
 
-  wrapper.appendChild(bubble);
-  document.getElementById('messages').appendChild(wrapper);
+  inner.appendChild(badge);
+  inner.appendChild(bubble);
+  row.appendChild(inner);
+  $('messages').appendChild(row);
   return bubble;
 }
 
 function scrollToBottom() {
-  const el = document.getElementById('messages');
+  const el = $('messages');
   el.scrollTop = el.scrollHeight;
+}
+
+// ── Status bar ────────────────────────────────────────────────────────────
+function showStatus(text) {
+  let bar = $('status-bar');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'status-bar';
+    $('input-area').parentNode.insertBefore(bar, $('input-area'));
+  }
+  bar.textContent = text;
+  bar.classList.add('visible');
+}
+
+function hideStatus() {
+  const bar = $('status-bar');
+  if (bar) bar.classList.remove('visible');
 }
 
 // ── Send & stream ─────────────────────────────────────────────────────────
 async function sendMessage() {
   if (isStreaming) return;
 
-  const input = document.getElementById('msg-input');
+  const input = $('msg-input');
   const message = input.value.trim();
   if (!message) return;
 
   input.value = '';
-  // Reset textarea height after clearing
   input.style.height = 'auto';
   setStreaming(true);
 
@@ -134,6 +206,7 @@ async function sendMessage() {
   const assistantBubble = appendMessage('assistant', '');
   assistantBubble.classList.add('streaming');
   scrollToBottom();
+  showStatus('生成中…');
 
   try {
     const response = await fetch('/chat', {
@@ -161,9 +234,8 @@ async function sendMessage() {
 
       buffer += decoder.decode(value, { stream: true });
 
-      // Process complete SSE lines
       const lines = buffer.split('\n');
-      buffer = lines.pop(); // last (possibly incomplete) line stays in buffer
+      buffer = lines.pop();
 
       for (const line of lines) {
         if (!line.startsWith('data: ')) continue;
@@ -192,15 +264,19 @@ async function sendMessage() {
   } finally {
     assistantBubble.classList.remove('streaming');
     setStreaming(false);
+    hideStatus();
     scrollToBottom();
-    document.getElementById('msg-input').focus();
+    $('msg-input').focus();
   }
 }
 
 function setStreaming(active) {
   isStreaming = active;
-  document.getElementById('send-btn').disabled = active;
-  document.getElementById('msg-input').disabled = active;
+  const btn = $('send-btn');
+  btn.disabled = active;
+  $('msg-input').disabled = active;
+  $('send-label').hidden = active;
+  $('send-spinner').hidden = !active;
 }
 
 // ── Boot ──────────────────────────────────────────────────────────────────
