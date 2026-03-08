@@ -10,13 +10,21 @@ async function init() {
 }
 
 function setupEventListeners() {
+  const input = document.getElementById('msg-input');
+
   document.getElementById('send-btn').addEventListener('click', sendMessage);
 
-  document.getElementById('msg-input').addEventListener('keydown', (e) => {
+  input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
     }
+  });
+
+  // Auto-resize textarea as user types
+  input.addEventListener('input', () => {
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 160) + 'px';
   });
 
   document.getElementById('new-chat-btn').addEventListener('click', startNewChat);
@@ -49,9 +57,10 @@ function renderConversations(convs) {
 
 function formatConvLabel(conv) {
   const d = new Date(conv.created_at);
+  // created_at is ISO-8601 with UTC timezone from the API
   return d.toLocaleDateString('ja-JP', { month: '2-digit', day: '2-digit' })
     + ' ' + d.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
-    + ' — ' + conv.id.slice(0, 6);
+    + ' #' + conv.id.slice(0, 6);
 }
 
 // ── Load conversation history ─────────────────────────────────────────────
@@ -117,6 +126,8 @@ async function sendMessage() {
   if (!message) return;
 
   input.value = '';
+  // Reset textarea height after clearing
+  input.style.height = 'auto';
   setStreaming(true);
 
   appendMessage('user', message);
@@ -182,6 +193,7 @@ async function sendMessage() {
     assistantBubble.classList.remove('streaming');
     setStreaming(false);
     scrollToBottom();
+    document.getElementById('msg-input').focus();
   }
 }
 

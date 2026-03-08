@@ -31,7 +31,13 @@ services:
     ports:
       - "8001:8001"
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:8001/health || exit 1"]
+      # vllm/vllm-openai image is Ubuntu-based; use python3 instead of curl
+      test:
+        - "CMD-SHELL"
+        - >-
+          python3 -c
+          "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"
+          || exit 1
       interval: 30s
       timeout: 10s
       retries: 15
@@ -45,8 +51,12 @@ services:
       - "8000:8000"
     env_file: .env
     volumes:
-      - sqlite_data:/data
-    healthcheck:
+      - sqlite_data:/data    # required:false にすることで、with-vllm プロファイル使用時には vllm が起動するまで待ち、
+    # プロファイルなしの場合は山積みなしで起動する
+    depends_on:
+      vllm:
+        condition: service_healthy
+        required: false    healthcheck:
       test: ["CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1"]
       interval: 10s
       timeout: 5s

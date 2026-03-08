@@ -1,6 +1,18 @@
 import uuid
 
 
+def test_chat_empty_message_rejected(client):
+    # schemas.py の min_length=1 によって 422 が返ること
+    resp = client.post("/chat", json={"message": ""})
+    assert resp.status_code == 422
+
+
+def test_chat_whitespace_only_rejected(client):
+    # field_validator で strip → 空文字 → 422 になること
+    resp = client.post("/chat", json={"message": "   "})
+    assert resp.status_code == 422
+
+
 def test_list_conversations_empty_or_list(client):
     resp = client.get("/conversations")
     assert resp.status_code == 200
