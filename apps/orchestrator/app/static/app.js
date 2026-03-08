@@ -2,6 +2,7 @@
 
 let currentConversationId = null;
 let isStreaming = false;
+let defaultModel = null;
 
 // ── DOM refs ──────────────────────────────────────────────────────────────
 const $ = (id) => document.getElementById(id);
@@ -9,7 +10,55 @@ const $ = (id) => document.getElementById(id);
 // ── Init ──────────────────────────────────────────────────────────────────
 async function init() {
   setupEventListeners();
-  await loadConversations();
+  await Promise.all([loadModels(), loadConversations()]);
+}
+
+// ── Model selector ────────────────────────────────────────────────────────
+async function loadModels() {
+  const select = $('model-select');
+  try {
+    const resp = await fetch('/models');
+    if (!resp.ok) throw new Error(resp.statusText);
+    const body = await resp.json();
+    defaultModel = body.default_model || null;
+    const models = body.data || [];
+
+    select.innerHTML = '';
+    if (models.length === 0) {
+      // No models returned — use default
+      const opt = document.createElement('option');
+      opt.value = defaultModel || '';
+      opt.textContent = defaultModel || '(default)';
+      select.appendChild(opt);
+    } else {
+      for (const m of models) {
+        const opt = document.createElement('option');
+        opt.value = m.id;
+        opt.textContent = m.id;
+        select.appendChild(opt);
+      }
+    }
+
+    // Restore from localStorage
+    const saved = localStorage.getItem('selectedModel');
+    if (saved && [...select.options].some((o) => o.value === saved)) {
+      select.value = saved;
+    } else if (defaultModel && [...select.options].some((o) => o.value === defaultModel)) {
+      select.value = defaultModel;
+    }
+  } catch (e) {
+    console.warn('Failed to load models:', e);
+    select.innerHTML = '';
+    const opt = document.createElement('option');
+    opt.value = defaultModel || '';
+    opt.textContent = (defaultModel || 'default') + ' (offline)';
+    select.appendChild(opt);
+  }
+}
+
+function getSelectedModel() {
+  const v = $('model-select').value;
+  return v || defaultModel || undefined;
 }
 
 function setupEventListeners() {
@@ -27,6 +76,10 @@ function setupEventListeners() {
   input.addEventListener('input', autoResize);
 
   $('new-chat-btn').addEventListener('click', startNewChat);
+
+  $('model-select').addEventListener('change', () => {
+    localStorage.setItem('selectedModel', $('model-select').value);
+  });
 }
 
 function autoResize() {
@@ -214,6 +267,7 @@ async function sendMessage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         conversation_id: currentConversationId || undefined,
+        model: getSelectedModel(),
         message,
       }),
     });

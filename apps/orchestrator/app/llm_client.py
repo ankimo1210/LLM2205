@@ -8,18 +8,36 @@ from app.config import settings
 _TIMEOUT = httpx.Timeout(connect=10.0, read=120.0, write=10.0, pool=5.0)
 
 
-def _completions_url() -> str:
-    """Build the chat completions URL, normalising a trailing /v1."""
+def _base_url() -> str:
+    """Return the normalised base URL (without trailing /v1)."""
     base = settings.vllm_base_url.rstrip("/")
     if base.endswith("/v1"):
         base = base[:-3]
-    return f"{base}/v1/chat/completions"
+    return base
 
 
-async def stream_chat(messages: list[dict]) -> AsyncIterator[str]:
+def _completions_url() -> str:
+    """Build the chat completions URL, normalising a trailing /v1."""
+    return f"{_base_url()}/v1/chat/completions"
+
+
+async def fetch_models() -> list[dict]:
+    """Fetch the model list from the OpenAI-compatible /v1/models endpoint."""
+    url = f"{_base_url()}/v1/models"
+    async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+        resp = await client.get(url)
+        resp.raise_for_status()
+        body = resp.json()
+    return [{"id": m["id"]} for m in body.get("data", [])]
+
+
+async def stream_chat(
+    messages: list[dict],
+    model: str | None = None,
+) -> AsyncIterator[str]:
     """Yield text tokens from the vLLM OpenAI-compatible streaming API."""
     payload = {
-        "model": settings.vllm_model_id,
+        "model": model or settings.vllm_model_id,
         "messages": messages,
         "stream": True,
         "max_tokens": 2048,

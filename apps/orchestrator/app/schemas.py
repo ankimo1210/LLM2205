@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field, field_validator
 
 class ChatRequest(BaseModel):
     conversation_id: str | None = None
+    model: str | None = None
     # 空メッセージ・空白のみを拒否（API 422 として返す）
     message: str = Field(..., min_length=1)
 

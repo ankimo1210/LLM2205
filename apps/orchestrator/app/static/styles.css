@@ -226,7 +226,29 @@ html, body { height: 100%; font-family: var(--font); background: var(--chat-bg);
   border-top: 1px solid var(--border);
   background: var(--chat-bg);
   flex-shrink: 0;
+  flex-wrap: wrap;
 }
+
+/* ── Model selector ──────────────────────────────────────────────────── */
+#model-selector {
+  width: 100%;
+  flex-shrink: 0;
+}
+
+#model-select {
+  width: 100%;
+  background: var(--input-bg);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-family: var(--font);
+  font-size: 0.78rem;
+  outline: none;
+  cursor: pointer;
+  appearance: auto;
+}
+#model-select:focus { border-color: var(--accent); }
 
 #msg-input {
   flex: 1;

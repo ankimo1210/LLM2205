@@ -1,6 +1,24 @@
 import uuid
 
 
+def test_models_returns_expected_shape(client):
+    resp = client.get("/models")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert "data" in body
+    assert "default_model" in body
+    assert isinstance(body["data"], list)
+    # default_model should match the env var set in conftest
+    assert body["default_model"] == "test-model"
+
+
+def test_chat_with_model_field_accepted(client):
+    # Ensure /chat accepts the optional model field without 422
+    resp = client.post("/chat", json={"message": "hi", "model": "some-model"})
+    # Won't succeed against real LLM, but should not be a validation error
+    assert resp.status_code != 422
+
+
 def test_chat_empty_message_rejected(client):
     # schemas.py の min_length=1 によって 422 が返ること
     resp = client.post("/chat", json={"message": ""})

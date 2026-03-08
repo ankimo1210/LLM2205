@@ -1,4 +1,5 @@
 import json
+import logging
 import uuid
 from datetime import datetime, timezone
 
@@ -8,11 +9,27 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.db import SessionLocal, get_db
-from app.llm_client import stream_chat
+from app.llm_client import fetch_models, stream_chat
 from app.models import Conversation, Message
 from app.schemas import ChatRequest
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
+
+
+@router.get("/models")
+async def list_models():
+    """Proxy the OpenAI-compatible /v1/models and return a simplified list."""
+    try:
+        data = await fetch_models()
+    except Exception as exc:
+        logger.warning("Failed to fetch model list: %s", exc)
+        return {
+            "data": [],
+            "default_model": settings.vllm_model_id,
+            "error": "Cannot reach model listing endpoint",
+        }
+    return {"data": data, "default_model": settings.vllm_model_id}
 
 
 @router.post("/chat")
@@ -46,15 +63,18 @@ async def chat(request: ChatRequest, db: Session = Depends(get_db)):
 
     conversation_id = conv.id
     user_message = request.message
+    selected_model = request.model or settings.vllm_model_id
 
     # ── SSE generator ────────────────────────────────────────────────────
     async def generate():
         full_response: list[str] = []
 
-        yield f"data: {json.dumps({'type': 'start', 'conversation_id': conversation_id})}\n\n"
+        yield (
+            f"data: {json.dumps({'type': 'start', 'conversation_id': conversation_id, 'model': selected_model})}\n\n"
+        )
 
         try:
-            async for token in stream_chat(messages):
+            async for token in stream_chat(messages, model=selected_model):
                 full_response.append(token)
                 yield f"data: {json.dumps({'type': 'token', 'content': token})}\n\n"
         except Exception as exc:
