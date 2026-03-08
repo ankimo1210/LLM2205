@@ -51,12 +51,12 @@ services:
       - "8000:8000"
     env_file: .env
     volumes:
-      - sqlite_data:/data    # required:false にすることで、with-vllm プロファイル使用時には vllm が起動するまで待ち、
-    # プロファイルなしの場合は山積みなしで起動する
+      - sqlite_data:/data
     depends_on:
       vllm:
         condition: service_healthy
-        required: false    healthcheck:
+        required: false
+    healthcheck:
       test: ["CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1"]
       interval: 10s
       timeout: 5s

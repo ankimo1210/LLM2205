@@ -13,6 +13,16 @@ def test_chat_whitespace_only_rejected(client):
     assert resp.status_code == 422
 
 
+def test_chat_missing_message_field(client):
+    resp = client.post("/chat", json={})
+    assert resp.status_code == 422
+
+
+def test_chat_invalid_json(client):
+    resp = client.post("/chat", content=b"not json", headers={"content-type": "application/json"})
+    assert resp.status_code == 422
+
+
 def test_list_conversations_empty_or_list(client):
     resp = client.get("/conversations")
     assert resp.status_code == 200

@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  test:
+  lint-and-test:
     runs-on: ubuntu-latest
 
     steps:
@@ -22,10 +22,9 @@ jobs:
       - name: Install package + dev deps
         run: pip install -e "apps/orchestrator[dev]"
 
+      - name: Lint (ruff)
+        run: ruff check apps/orchestrator/app/ apps/orchestrator/tests/
+
       - name: Run tests
         working-directory: apps/orchestrator
         run: pytest tests/ -v --tb=short
-
-      - name: Lint (ruff, optional)
-        if: false   # enable when ruff is added to dev deps
-        run: ruff check apps/orchestrator/app/
