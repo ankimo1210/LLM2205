@@ -375,6 +375,32 @@ function appendMsgUsage(usage) {
   $('messages').appendChild(meta);
 }
 
+// ── Sources display ───────────────────────────────────────────────────────
+function appendSources(sources) {
+  const container = document.createElement('div');
+  container.className = 'sources-container';
+
+  const label = document.createElement('div');
+  label.className = 'sources-label';
+  label.textContent = '📎 参照元';
+  container.appendChild(label);
+
+  const list = document.createElement('div');
+  list.className = 'sources-list';
+  for (const src of sources) {
+    const item = document.createElement('a');
+    item.className = 'source-item';
+    item.href = src.url;
+    item.target = '_blank';
+    item.rel = 'noopener noreferrer';
+    item.textContent = src.title || src.url;
+    item.title = src.url;
+    list.appendChild(item);
+  }
+  container.appendChild(list);
+  $('messages').appendChild(container);
+}
+
 // ── Send & stream ─────────────────────────────────────────────────────────
 async function sendMessage() {
   if (isStreaming) return;
@@ -388,6 +414,7 @@ async function sendMessage() {
   setStreaming(true);
 
   let streamedText = '';
+  let pendingSources = [];
   appendMessage('user', message);
   const assistantBubble = appendMessage('assistant', '');
   assistantBubble.classList.add('streaming');
@@ -434,6 +461,11 @@ async function sendMessage() {
 
         if (data.type === 'start') {
           currentConversationId = data.conversation_id;
+        } else if (data.type === 'tool') {
+          showStatus(`🔍 Web検索中… 「${data.query}」`);
+        } else if (data.type === 'sources') {
+          // Store sources to render after done
+          pendingSources = data.sources || [];
         } else if (data.type === 'token') {
           streamedText += data.content;
           assistantBubble.textContent = streamedText;
@@ -445,6 +477,11 @@ async function sendMessage() {
           // Final render: markdown + math
           assistantBubble.classList.add('markdown-body');
           assistantBubble.innerHTML = renderMarkdown(streamedText);
+          // Show sources if available
+          const finalSources = data.sources || pendingSources;
+          if (finalSources && finalSources.length > 0) {
+            appendSources(finalSources);
+          }
           // Show usage if returned
           if (data.usage) {
             showUsageBar(data.usage);

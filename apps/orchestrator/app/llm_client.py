@@ -31,6 +31,27 @@ async def fetch_models() -> list[dict]:
     return [{"id": m["id"]} for m in body.get("data", [])]
 
 
+async def chat_json(
+    messages: list[dict],
+    model: str | None = None,
+    max_tokens: int = 256,
+) -> str:
+    """Single-shot (non-streaming) chat completion. Returns the full text."""
+    payload = {
+        "model": model or settings.vllm_model_id,
+        "messages": messages,
+        "stream": False,
+        "max_tokens": max_tokens,
+        "temperature": 0.0,
+    }
+    url = _completions_url()
+    async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+        resp = await client.post(url, json=payload)
+        resp.raise_for_status()
+        body = resp.json()
+    return body["choices"][0]["message"]["content"]
+
+
 async def stream_chat(
     messages: list[dict],
     model: str | None = None,

@@ -345,6 +345,44 @@ html, body { height: 100%; font-family: var(--font); background: var(--chat-bg);
   font-variant-numeric: tabular-nums;
 }
 
+/* ── Sources display ─────────────────────────────────────────────────── */
+.sources-container {
+  padding: 6px 24px 12px;
+  padding-left: 68px;
+  max-width: 808px;
+  margin: 0 auto;
+}
+.sources-label {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+.sources-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.source-item {
+  display: inline-block;
+  font-size: 0.7rem;
+  color: var(--accent);
+  background: rgba(137,180,250,0.08);
+  border: 1px solid rgba(137,180,250,0.15);
+  border-radius: 6px;
+  padding: 3px 8px;
+  text-decoration: none;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: background 0.12s, border-color 0.12s;
+}
+.source-item:hover {
+  background: rgba(137,180,250,0.15);
+  border-color: var(--accent);
+}
+
 /* ── Status indicator (shown during streaming) ───────────────────────── */
 #status-bar {
   text-align: center;
