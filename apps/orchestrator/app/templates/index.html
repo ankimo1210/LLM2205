@@ -19,6 +19,10 @@
 
     <!-- Main chat area -->
     <main id="chat-area">
+      <div id="chat-header">
+        <button id="sidebar-toggle" aria-label="メニュー">☰</button>
+        <span id="chat-title">Local LLM Chat</span>
+      </div>
       <div id="messages" role="log" aria-live="polite">
         <div id="empty-state">
           <div class="empty-icon">💬</div>
@@ -27,6 +31,7 @@
       </div>
 
       <div id="input-area">
+        <div id="usage-bar"></div>
         <div id="model-selector">
           <select id="model-select" aria-label="モデル選択">
             <option value="">読み込み中…</option>

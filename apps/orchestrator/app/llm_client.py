@@ -34,13 +34,19 @@ async def fetch_models() -> list[dict]:
 async def stream_chat(
     messages: list[dict],
     model: str | None = None,
-) -> AsyncIterator[str]:
-    """Yield text tokens from the vLLM OpenAI-compatible streaming API."""
+) -> AsyncIterator[str | dict]:
+    """Yield text tokens from the vLLM OpenAI-compatible streaming API.
+
+    Text tokens are yielded as plain str.
+    When the stream ends, a dict ``{"usage": {...}}`` is yielded if the
+    backend returned usage information in the final chunk.
+    """
     payload = {
         "model": model or settings.vllm_model_id,
         "messages": messages,
         "stream": True,
         "max_tokens": 2048,
+        "stream_options": {"include_usage": True},
     }
     url = _completions_url()
 
@@ -55,6 +61,8 @@ async def stream_chat(
                         f"at {url} — check VLLM_MODEL_ID or API key"
                     ) from exc
 
+                usage_data: dict | None = None
+
                 async for line in response.aiter_lines():
                     if not line.startswith("data: "):
                         continue
@@ -65,9 +73,19 @@ async def stream_chat(
                         chunk = json.loads(data)
                     except json.JSONDecodeError:
                         continue
-                    delta = chunk["choices"][0]["delta"].get("content") or ""
-                    if delta:
-                        yield delta
+
+                    # Capture usage from final chunk
+                    if chunk.get("usage"):
+                        usage_data = chunk["usage"]
+
+                    choices = chunk.get("choices") or []
+                    if choices:
+                        delta = choices[0].get("delta", {}).get("content") or ""
+                        if delta:
+                            yield delta
+
+                if usage_data:
+                    yield {"usage": usage_data}
     except httpx.ConnectError as exc:
         raise RuntimeError(
             f"Cannot reach LLM endpoint at {url} — "

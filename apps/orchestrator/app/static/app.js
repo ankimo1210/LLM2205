@@ -75,11 +75,17 @@ function setupEventListeners() {
 
   input.addEventListener('input', autoResize);
 
-  $('new-chat-btn').addEventListener('click', startNewChat);
+  $('new-chat-btn').addEventListener('click', () => {
+    startNewChat();
+    closeSidebar();
+  });
 
   $('model-select').addEventListener('change', () => {
     localStorage.setItem('selectedModel', $('model-select').value);
   });
+
+  // Mobile sidebar toggle
+  $('sidebar-toggle').addEventListener('click', toggleSidebar);
 }
 
 function autoResize() {
@@ -136,7 +142,19 @@ function renderConversations(convs) {
 
     el.appendChild(preview);
     el.appendChild(time);
-    el.addEventListener('click', () => loadConversation(conv.id));
+
+    // Show total tokens if available
+    if (conv.usage && conv.usage.total_tokens) {
+      const usage = document.createElement('span');
+      usage.className = 'conv-usage';
+      usage.textContent = `${formatTokens(conv.usage.total_tokens)} tokens`;
+      el.appendChild(usage);
+    }
+
+    el.addEventListener('click', () => {
+      loadConversation(conv.id);
+      closeSidebar();
+    });
     list.appendChild(el);
   }
 }
@@ -160,6 +178,16 @@ async function loadConversation(id) {
     clearMessages();
     for (const msg of conv.messages) {
       appendMessage(msg.role, msg.content);
+      // Show per-message usage for assistant messages
+      if (msg.role === 'assistant' && msg.total_tokens) {
+        appendMsgUsage(msg);
+      }
+    }
+    // Show cumulative usage bar
+    if (conv.usage) {
+      showUsageBar(conv.usage);
+    } else {
+      hideUsageBar();
     }
     scrollToBottom();
   } catch (e) {
@@ -177,10 +205,39 @@ function highlightActiveConv(id) {
 function startNewChat() {
   currentConversationId = null;
   clearMessages();
+  hideUsageBar();
   document.querySelectorAll('.conv-item').forEach((el) => el.classList.remove('active'));
   $('msg-input').focus();
 }
+// ── Mobile sidebar ────────────────────────────────────────────────────
+function toggleSidebar() {
+  const sidebar = $('sidebar');
+  if (sidebar.classList.contains('open')) {
+    closeSidebar();
+  } else {
+    openSidebar();
+  }
+}
 
+function openSidebar() {
+  const sidebar = $('sidebar');
+  sidebar.classList.add('open');
+  // Create backdrop
+  let overlay = $('sidebar-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'sidebar-overlay';
+    overlay.addEventListener('click', closeSidebar);
+    document.body.appendChild(overlay);
+  }
+  overlay.style.display = 'block';
+}
+
+function closeSidebar() {
+  $('sidebar').classList.remove('open');
+  const overlay = $('sidebar-overlay');
+  if (overlay) overlay.style.display = 'none';
+}
 function clearMessages() {
   const el = $('messages');
   el.innerHTML = '';
@@ -290,6 +347,34 @@ function hideStatus() {
   if (bar) bar.classList.remove('visible');
 }
 
+// ── Usage display ─────────────────────────────────────────────────────────
+function formatTokens(n) {
+  if (n == null) return '—';
+  return n.toLocaleString();
+}
+
+function showUsageBar(usage) {
+  const bar = $('usage-bar');
+  bar.innerHTML =
+    `<span class="usage-item"><span class="usage-label">Prompt:</span><span class="usage-value">${formatTokens(usage.prompt_tokens)}</span></span>` +
+    `<span class="usage-item"><span class="usage-label">Completion:</span><span class="usage-value">${formatTokens(usage.completion_tokens)}</span></span>` +
+    `<span class="usage-item"><span class="usage-label">Total:</span><span class="usage-value">${formatTokens(usage.total_tokens)}</span></span>`;
+  bar.classList.add('visible');
+}
+
+function hideUsageBar() {
+  const bar = $('usage-bar');
+  bar.innerHTML = '';
+  bar.classList.remove('visible');
+}
+
+function appendMsgUsage(usage) {
+  const meta = document.createElement('div');
+  meta.className = 'msg-usage';
+  meta.textContent = `tokens: ${formatTokens(usage.prompt_tokens)} prompt / ${formatTokens(usage.completion_tokens)} compl / ${formatTokens(usage.total_tokens)} total`;
+  $('messages').appendChild(meta);
+}
+
 // ── Send & stream ─────────────────────────────────────────────────────────
 async function sendMessage() {
   if (isStreaming) return;
@@ -360,6 +445,11 @@ async function sendMessage() {
           // Final render: markdown + math
           assistantBubble.classList.add('markdown-body');
           assistantBubble.innerHTML = renderMarkdown(streamedText);
+          // Show usage if returned
+          if (data.usage) {
+            showUsageBar(data.usage);
+            appendMsgUsage(data.usage);
+          }
           await loadConversations();
         }
       }

@@ -309,6 +309,42 @@ html, body { height: 100%; font-family: var(--font); background: var(--chat-bg);
   border: 1px solid rgba(243,139,168,0.2);
 }
 
+/* ── Usage bar ────────────────────────────────────────────────────────── */
+#usage-bar {
+  display: none;
+  width: 100%;
+  padding: 3px 10px;
+  font-size: 0.72rem;
+  color: var(--muted);
+  gap: 12px;
+  flex-shrink: 0;
+}
+#usage-bar.visible {
+  display: flex;
+}
+#usage-bar .usage-item {
+  display: flex;
+  gap: 3px;
+}
+#usage-bar .usage-label { color: var(--text-dim); }
+#usage-bar .usage-value { color: var(--accent); font-weight: 500; font-variant-numeric: tabular-nums; }
+
+/* Sidebar usage badge */
+.conv-usage {
+  font-size: 0.66rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Per-message usage (shown below assistant bubble) */
+.msg-usage {
+  font-size: 0.68rem;
+  color: var(--muted);
+  margin-top: 4px;
+  padding-left: 44px;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ── Status indicator (shown during streaming) ───────────────────────── */
 #status-bar {
   text-align: center;
@@ -417,12 +453,102 @@ html, body { height: 100%; font-family: var(--font); background: var(--chat-bg);
 
 /* ── Responsive ──────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
-  #sidebar { width: 200px; min-width: 160px; }
+  /* Show mobile chat header */
+  #chat-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: var(--sidebar-bg);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  #sidebar-toggle {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 1.2rem;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  #sidebar-toggle:active { background: var(--sidebar-hover); }
+  #chat-title {
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Sidebar becomes off-canvas overlay */
+  #sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 280px;
+    min-width: 0;
+    z-index: 1000;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+  }
+  #sidebar.open {
+    transform: translateX(0);
+  }
+
+  /* Backdrop */
+  #sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+    background: rgba(0,0,0,0.5);
+  }
+
+  /* Messages */
   .message-inner { max-width: 100%; }
-  .message-row { padding: 14px 12px; }
-  #input-area { padding: 8px 12px 10px; }
-}
-@media (max-width: 480px) {
-  #sidebar { display: none; }
+  .message-row { padding: 12px 10px; }
+  .message-inner { gap: 8px; }
   .role-badge { width: 28px; height: 28px; font-size: 0.6rem; }
+  .bubble { padding: 8px 10px; font-size: 0.88rem; }
+
+  /* Input area */
+  #input-area { padding: 6px 8px 10px; gap: 6px; }
+  #msg-input {
+    font-size: 16px; /* prevent iOS zoom on focus */
+    padding: 8px 10px;
+    border-radius: 10px;
+    min-height: 40px;
+  }
+  #send-btn {
+    height: 40px;
+    min-width: 56px;
+    padding: 0 14px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+  }
+  #model-select {
+    font-size: 0.82rem;
+    padding: 6px 8px;
+  }
+
+  /* Markdown content mobile tweaks */
+  .bubble.markdown-body pre {
+    padding: 10px;
+    font-size: 0.78em;
+  }
+  .bubble.markdown-body table {
+    font-size: 0.78em;
+  }
+  .bubble.markdown-body th,
+  .bubble.markdown-body td {
+    padding: 4px 6px;
+  }
+  .bubble.markdown-body .katex { font-size: 0.95em; }
 }
